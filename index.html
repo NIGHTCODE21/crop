@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raju Hisaab 📈💸</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    background: #f7f7f7;
+    color: #333;
+  }
+  header {
+    background-color: #2e7d32;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+  }
+  main {
+    max-width: 900px;
+    margin: 1rem auto;
+    background: white;
+    padding: 1rem 2rem 2rem 2rem;
+    border-radius: 6px;
+  }
+  h1 {
+    margin-top: 0;
+  }
+  .crop-form, .expense-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .crop-form input, .expense-form input, .crop-form button, .expense-form button {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  input[type="text"], input[type="number"] {
+    flex-grow: 1;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+  button {
+    background-color: #2e7d32;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  button:hover {
+    background-color: #27642a;
+  }
+  .crop-list {
+    margin-top: 1rem;
+  }
+  .crop-card {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #fafafa;
+  }
+  .crop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .crop-header h2 {
+    margin: 0;
+  }
+  .progress-bar-container {
+    background-color: #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 16px;
+    margin-top: 0.5rem;
+  }
+  .progress-bar {
+    background-color: #2e7d32;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease-in-out;
+  }
+  .expenses-list {
+    margin-top: 0.5rem;
+  }
+  .expense-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+  .expense-item button {
+    background: transparent;
+    color: #d32f2f;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0 4px;
+  }
+  .dashboard {
+    background: #e8f5e9;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+  }
+  .search-sort {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  select, input[type="search"] {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: 1px solid #aaa;
+  }
+  @media (max-width: 600px) {
+    .crop-form, .expense-form, .crop-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .crop-header {
+      gap: 0.5rem;
+    }
+    .search-sort {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+  .import-export {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .import-export button {
+    background-color: #1976d2;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Raju Hisaab 📈💸</h1>
+</header>
+
+<main>
+  <section class="dashboard" aria-live="polite">
+    <strong>Total Crops:</strong> <span id="totalCrops">0</span> |
+    <strong>Total Expenses:</strong> ₹<span id="totalExpenses">0</span>
+  </section>
+
+  <section class="search-sort">
+    <input type="search" id="searchInput" placeholder="Search crops by name..." aria-label="Search crops by name" />
+    <select id="sortSelect" aria-label="Sort crops">
+      <option value="name-asc">Sort by Name (A-Z)</option>
+      <option value="name-desc">Sort by Name (Z-A)</option>
+      <option value="date-new">Sort by Date (Newest First)</option>
+      <option value="date-old">Sort by Date (Oldest First)</option>
+    </select>
+  </section>
+
+  <section>
+    <form id="cropForm" class="crop-form" aria-label="Add new crop">
+      <input type="text" id="cropName" placeholder="Crop Name" required aria-required="true" />
+      <input type="number" id="cropBudget" placeholder="Budget (₹)" min="0" required aria-required="true" />
+      <button type="submit">Add Crop</button>
+    </form>
+  </section>
+
+  <section class="crop-list" id="cropList" aria-live="polite" aria-label="List of crops">
+    <!-- Crop cards inserted here -->
+  </section>
+
+  <section class="import-export">
+    <button id="exportBtn" aria-label="Export data">Export Data</button>
+    <button id="importBtn" aria-label="Import data">Import Data</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
+  </section>
+</main>
+
+<script>
+  let crops = JSON.parse(localStorage.getItem('khetHisabCrops') || '[]');
+
+  const cropList = document.getElementById('cropList');
+  const cropForm = document.getElementById('cropForm');
+  const cropNameInput = document.getElementById('cropName');
+  const cropBudgetInput = document.getElementById('cropBudget');
+  const totalCropsSpan = document.getElementById('totalCrops');
+  const totalExpensesSpan = document.getElementById('totalExpenses');
+  const searchInput = document.getElementById('searchInput');
+  const sortSelect = document.getElementById('sortSelect');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+
+  function saveData() {
+    localStorage.setItem('khetHisabCrops', JSON.stringify(crops));
+  }
+
+  function calculateTotals() {
+    const totalCrops = crops.length;
+    const totalExpenses = crops.reduce((sum, crop) => {
+      return sum + crop.expenses.reduce((eSum, e) => eSum + e.amount, 0);
+    }, 0);
+    totalCropsSpan.textContent = totalCrops;
+    totalExpensesSpan.textContent = totalExpenses.toFixed(2);
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, function(m) {
+      return ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m];
+    });
+  }
+
+  function renderCrops() {
+    const searchTerm = searchInput.value.toLowerCase();
+    let filteredCrops = crops.filter(crop => crop.name.toLowerCase().includes(searchTerm));
+
+    const sortValue = sortSelect.value;
+    filteredCrops.sort((a,b) => {
+      if(sortValue === 'name-asc') return a.name.localeCompare(b.name);
+      if(sortValue === 'name-desc') return b.name.localeCompare(a.name);
+      if(sortValue === 'date-new') return b.createdAt - a.createdAt;
+      if(sortValue === 'date-old') return a.createdAt - b.createdAt;
+      return 0;
+    });
+
+    cropList.innerHTML = '';
+
+    if(filteredCrops.length === 0) {
+      cropList.innerHTML = '<p>No crops found.</p>';
+      calculateTotals();
+      return;
+    }
+
+    filteredCrops.forEach(crop => {
+      const totalExpense = crop.expenses.reduce((sum, e) => sum + e.amount, 0);
+      const expensePercent = crop.budget > 0 ? Math.min(100, (totalExpense / crop.budget) * 100) : 0;
+
+      const cropCard = document.createElement('section');
+      cropCard.classList.add('crop-card');
+      cropCard.setAttribute('tabindex', '0');
+      cropCard.setAttribute('aria-label', `Crop ${crop.name} with budget ₹${crop.budget} and ${crop.expenses.length} expenses`);
+
+      cropCard.innerHTML = `
+        <div class="crop-header">
+          <div>
+            <input type="text" class="edit-crop-name" value="${escapeHtml(crop.name)}" aria-label="Edit crop name" data-id="${crop.id}" />
+            <input type="number" class="edit-crop-budget" value="${crop.budget}" min="0" aria-label="Edit crop budget" data-id="${crop.id}" />
+          </div>
+          <button class="delete-crop" aria-label="Delete crop ${escapeHtml(crop.name)}" data-id="${crop.id}">Delete Crop</button>
+        </div>
+
+        <div class="progress-bar-container" aria-label="Budget usage">
+          <div class="progress-bar" style="width:${expensePercent}%;"></div>
+        </div>
+        <p>Budget: ₹${crop.budget} | Expenses: ₹${totalExpense.toFixed(2)} (${expensePercent.toFixed(1)}%)</p>
+
+        <form class="expense-form" data-crop-id="${crop.id}" aria-label="Add expense to ${escapeHtml(crop.name)}">
+          <input type="text" class="expense-desc" placeholder="Expense Description" required aria-required="true" />
+          <input type="number" class="expense-amount" placeholder="Amount (₹)" min="0" required aria-required="true" />
+          <button type="submit">Add Expense</button>
+        </form>
+
+        <div class="expenses-list" aria-label="Expenses list">
+          ${crop.expenses.map(e => `
+            <div class="expense-item">
+              <span>${escapeHtml(e.description)} - ₹${e.amount.toFixed(2)}</span>
+              <button class="delete-expense" aria-label="Delete expense ${escapeHtml(e.description)}" data-crop-id="${crop.id}" data-expense-id="${e.id}">x</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      cropList.appendChild(cropCard);
+    });
+    calculateTotals();
+  }
+
+  // Generate unique IDs
+  function generateId() {
+    return '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  // Add Crop
+  cropForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = cropNameInput.value.trim();
+    const budget = parseFloat(cropBudgetInput.value);
+
+    if (!name || isNaN(budget) || budget < 0) {
+      alert('Please enter valid crop name and budget.');
+      return;
+    }
+
+    crops.push({
+      id: generateId(),
+      name,
+      budget,
+      createdAt: Date.now(),
+      expenses: []
+    });
+
+    saveData();
+    cropNameInput.value = '';
+    cropBudgetInput.value = '';
+    renderCrops();
+  });
+
+  // Delegated events for dynamically created elements
+  cropList.addEventListener('click', (e) => {
+    if(e.target.classList.contains('delete-crop')) {
+      const cropId = e.target.dataset.id;
+      if(confirm('Are you sure you want to delete this crop and all its expenses?')) {
+        crops = crops.filter(c => c.id !== cropId);
+        saveData();
+        renderCrops();
+      }
+    } else if(e.target.classList.contains('delete-expense')) {
+      const cropId = e.target.dataset.cropId;
+      const expenseId = e.target.dataset.expenseId;
+      const crop = crops.find(c => c.id === cropId);
+      if(crop) {
+        crop.expenses = crop.expenses.filter(e => e.id !== expenseId);
+        saveData();
+        renderCrops();
+      }
+    }
+  });
+
+  // Edit crop name and budget
+  cropList.addEventListener('change', (e) => {
+    if(e.target.classList.contains('edit-crop-name')) {
+      const cropId = e.target.dataset.id;
+      const crop = crops.find(c => c.id === cropId);
+      if(crop) {
+        const val = e.target.value.trim();
+        if(val) {
+          crop.name = val;
+          saveData();
+          renderCrops();
+        } else {
+          alert('Crop name cannot be empty.');
+          e.target.value = crop.name;
+        }
+      }
+    }
+    if(e.target.classList.contains('edit-crop-budget')) {
+      const cropId = e.target.dataset.id;
+      const crop = crops.find(c => c.id === cropId);
+      if(crop) {
+        const val = parseFloat(e.target.value);
+        if(!isNaN(val) && val >= 0) {
+          crop.budget = val;
+          saveData();
+          renderCrops();
+        } else {
+          alert('Budget must be a non-negative number.');
+          e.target.value = crop.budget;
+        }
+      }
+    }
+  });
+
+  // Add expense
+  cropList.addEventListener('submit', (e) => {
+    if(e.target.classList.contains('expense-form')) {
+      e.preventDefault();
+      const cropId = e.target.dataset.cropId;
+      const crop = crops.find(c => c.id === cropId);
+      if(!crop) return;
+
+      const descInput = e.target.querySelector('.expense-desc');
+      const amountInput = e.target.querySelector('.expense-amount');
+
+      const description = descInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+
+      if(!description || isNaN(amount) || amount < 0) {
+        alert('Please enter valid expense description and amount.');
+        return;
+      }
+
+      crop.expenses.push({
+        id: generateId(),
+        description,
+        amount
+      });
+
+      saveData();
+      renderCrops();
+    }
+  });
+
+  // Search and Sort event handlers
+  searchInput.addEventListener('input', renderCrops);
+  sortSelect.addEventListener('change', renderCrops);
+
+  // Export
+  exportBtn.addEventListener('click', () => {
+    const dataStr = JSON.stringify(crops, null, 2);
+    const blob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'khetHisabData.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Import
+  importBtn.addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const importedData = JSON.parse(evt.target.result);
+        if(Array.isArray(importedData)) {
+          crops = importedData;
+          saveData();
+          renderCrops();
+          alert('Data imported successfully.');
+        } else {
+          alert('Invalid data format.');
+        }
+      } catch {
+        alert('Error parsing JSON.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // Initial render
+  renderCrops();
+
+</script>
+</body>
+</html>
